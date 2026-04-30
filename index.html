@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>反應力極限測試</title>
+<title>反應力測試</title>
 
 <style>
 body {
@@ -20,6 +19,7 @@ body {
 
 #game {
     text-align: center;
+    max-width: 90vw;
 }
 
 #target {
@@ -30,17 +30,27 @@ body {
     display: none;
 }
 
+#result {
+    display: none;
+    margin-top: 20px;
+    background: #2a2a2a;
+    padding: 16px;
+    border-radius: 12px;
+    white-space: pre-line;
+}
+
 #scary-video {
     position: fixed;
     inset: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     object-fit: cover;
+    object-position: center;
     display: none;
     z-index: 9999;
+    background: black;
 }
 </style>
-
 </head>
 
 <body>
@@ -49,11 +59,13 @@ body {
     <h1>反應測試 (<span id="round">1</span>/3)</h1>
     <p id="msg">當綠點變紅時點擊</p>
     <button id="start">開始</button>
+
     <div id="target"></div>
+    <div id="result"></div>
 </div>
 
 <video id="scary-video" preload="auto" playsinline>
-    <source src="你的影片.mp4" type="video/mp4">
+    <source src="video.mp4" type="video/mp4">
 </video>
 
 <script>
@@ -68,6 +80,7 @@ const msg = document.getElementById('msg');
 const startBtn = document.getElementById('start');
 const roundText = document.getElementById('round');
 const video = document.getElementById('scary-video');
+const resultBox = document.getElementById('result');
 
 startBtn.onclick = () => {
     startBtn.style.display = 'none';
@@ -75,11 +88,11 @@ startBtn.onclick = () => {
 };
 
 function nextRound() {
-    clearCurrentTimer();
+    clearTimer();
 
     locked = true;
     target.style.display = 'none';
-    msg.innerText = "集中注意力...";
+    msg.innerText = "集中注意力";
     isRed = false;
 
     showGreen();
@@ -103,13 +116,11 @@ function showGreen() {
 target.onclick = () => {
     if (locked) return;
 
-    // 太早點擊
     if (!isRed) {
         failRound();
         return;
     }
 
-    // 第三關 → 嚇（穩定版本）
     if (round === 3) {
         locked = true;
 
@@ -131,33 +142,32 @@ target.onclick = () => {
 };
 
 function failRound() {
-    clearCurrentTimer();
+    clearTimer();
 
     locked = true;
     target.style.display = 'none';
-    msg.innerText = "太早了！重新來";
+    msg.innerText = "太早了，重新來";
 
     currentTimer = setTimeout(() => {
         nextRound();
     }, 1000);
 }
 
-// 👉 穩定 scare（重點）
 function triggerScare() {
-    clearCurrentTimer();
+    clearTimer();
 
     video.style.display = 'block';
 
     requestAnimationFrame(() => {
         if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(()=>{});
+            document.documentElement.requestFullscreen().catch(() => {});
         }
 
         setTimeout(() => {
             video.volume = 1;
 
             const p = video.play();
-            if (p) p.catch(()=>{});
+            if (p) p.catch(() => {});
 
             if (navigator.vibrate) {
                 navigator.vibrate([300,100,300,100,600]);
@@ -166,54 +176,47 @@ function triggerScare() {
     });
 }
 
-// ===== 排名系統 =====
-
-function getRank(ms) {
-    if (ms < 180) return "⚡ 神經反射等級（Top 1%）";
-    if (ms < 220) return "🧠 專注大師";
-    if (ms < 260) return "🎯 反應優秀";
-    if (ms < 320) return "👍 正常人類";
-    return "🐢 需要練習";
-}
-
-const fakeLeaderboard = [
-    { name: "Alex", score: 178 },
-    { name: "Chris", score: 192 },
-    { name: "Jamie", score: 205 },
-    { name: "Taylor", score: 219 },
-];
-
-function buildLeaderboard(myScore) {
-    const list = [...fakeLeaderboard, { name: "You", score: myScore }];
-
-    return list
-        .sort((a,b) => a.score - b.score)
-        .slice(0,5);
-}
-
 function showResult(reaction) {
     const rank = getRank(reaction);
     const leaderboard = buildLeaderboard(reaction);
 
     let boardText = leaderboard
         .map((p, i) => `${i+1}. ${p.name} - ${p.score}ms`)
-        .join("\\n");
+        .join("\n");
 
-    alert(
+    resultBox.style.display = 'block';
+
+    resultBox.innerText =
 `反應時間: ${reaction} ms
 
-等級：${rank}
+等級: ${rank}
 
-排行榜：
-${boardText}
-
-🔥 你已進入前五名`
-    );
+排行榜:
+${boardText}`;
 }
 
-// ===== utils =====
+function getRank(ms) {
+    if (ms < 180) return "神經反射等級";
+    if (ms < 220) return "專注大師";
+    if (ms < 260) return "反應優秀";
+    if (ms < 320) return "正常水平";
+    return "需要練習";
+}
 
-function clearCurrentTimer() {
+const fakeLeaderboard = [
+    { name: "Alex", score: 178 },
+    { name: "Chris", score: 192 },
+    { name: "Jamie", score: 205 },
+    { name: "Taylor", score: 219 }
+];
+
+function buildLeaderboard(myScore) {
+    return [...fakeLeaderboard, { name: "You", score: myScore }]
+        .sort((a,b) => a.score - b.score)
+        .slice(0,5);
+}
+
+function clearTimer() {
     if (currentTimer) {
         clearTimeout(currentTimer);
         currentTimer = null;
