@@ -16,7 +16,6 @@ body {
     align-items: center;
     justify-content: center;
     height: 100vh;
-    cursor: pointer;
 }
 
 #game {
@@ -53,8 +52,8 @@ body {
     <div id="target"></div>
 </div>
 
-<video id="scary-video">
-    <source src="video.mp4" type="video/mp4">
+<video id="scary-video" preload="auto" playsinline>
+    <source src="你的影片.mp4" type="video/mp4">
 </video>
 
 <script>
@@ -62,7 +61,6 @@ let round = 1;
 let isRed = false;
 let locked = false;
 let startTime = 0;
-
 let currentTimer = null;
 
 const target = document.getElementById('target');
@@ -77,7 +75,7 @@ startBtn.onclick = () => {
 };
 
 function nextRound() {
-    clearCurrentTimer(); // 👉 清掉舊計時器
+    clearCurrentTimer();
 
     locked = true;
     target.style.display = 'none';
@@ -105,21 +103,30 @@ function showGreen() {
 target.onclick = () => {
     if (locked) return;
 
+    // 太早點擊
     if (!isRed) {
         failRound();
         return;
     }
 
+    // 第三關 → 嚇（穩定版本）
     if (round === 3) {
-        triggerScare();
+        locked = true;
+
+        requestAnimationFrame(() => {
+            triggerScare();
+        });
+
         return;
     }
 
     const reaction = Date.now() - startTime;
-    alert(`反應時間: ${reaction} ms`);
+
+    showResult(reaction);
 
     round++;
     roundText.innerText = round;
+
     nextRound();
 };
 
@@ -135,23 +142,76 @@ function failRound() {
     }, 1000);
 }
 
+// 👉 穩定 scare（重點）
 function triggerScare() {
     clearCurrentTimer();
 
-    if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(()=>{});
-    }
-
     video.style.display = 'block';
-    video.volume = 1;
 
-    const p = video.play();
-    if (p) p.catch(()=>{});
+    requestAnimationFrame(() => {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(()=>{});
+        }
 
-    if (navigator.vibrate) {
-        navigator.vibrate([300,100,300,100,600]);
-    }
+        setTimeout(() => {
+            video.volume = 1;
+
+            const p = video.play();
+            if (p) p.catch(()=>{});
+
+            if (navigator.vibrate) {
+                navigator.vibrate([300,100,300,100,600]);
+            }
+        }, 50);
+    });
 }
+
+// ===== 排名系統 =====
+
+function getRank(ms) {
+    if (ms < 180) return "⚡ 神經反射等級（Top 1%）";
+    if (ms < 220) return "🧠 專注大師";
+    if (ms < 260) return "🎯 反應優秀";
+    if (ms < 320) return "👍 正常人類";
+    return "🐢 需要練習";
+}
+
+const fakeLeaderboard = [
+    { name: "Alex", score: 178 },
+    { name: "Chris", score: 192 },
+    { name: "Jamie", score: 205 },
+    { name: "Taylor", score: 219 },
+];
+
+function buildLeaderboard(myScore) {
+    const list = [...fakeLeaderboard, { name: "You", score: myScore }];
+
+    return list
+        .sort((a,b) => a.score - b.score)
+        .slice(0,5);
+}
+
+function showResult(reaction) {
+    const rank = getRank(reaction);
+    const leaderboard = buildLeaderboard(reaction);
+
+    let boardText = leaderboard
+        .map((p, i) => `${i+1}. ${p.name} - ${p.score}ms`)
+        .join("\\n");
+
+    alert(
+`反應時間: ${reaction} ms
+
+等級：${rank}
+
+排行榜：
+${boardText}
+
+🔥 你已進入前五名`
+    );
+}
+
+// ===== utils =====
 
 function clearCurrentTimer() {
     if (currentTimer) {
@@ -164,5 +224,6 @@ function rand(min, max) {
     return Math.random() * (max - min) + min;
 }
 </script>
+
 </body>
 </html>
