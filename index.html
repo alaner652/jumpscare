@@ -73,7 +73,8 @@ let round = 1;
 let isRed = false;
 let locked = false;
 let startTime = 0;
-let currentTimer = null;
+let timer = null;
+let scareTriggered = false;
 
 const target = document.getElementById('target');
 const msg = document.getElementById('msg');
@@ -91,9 +92,11 @@ function nextRound() {
     clearTimer();
 
     locked = true;
+    isRed = false;
+    scareTriggered = false;
+
     target.style.display = 'none';
     msg.innerText = "集中注意力";
-    isRed = false;
 
     showGreen();
 }
@@ -101,15 +104,29 @@ function nextRound() {
 function showGreen() {
     target.style.display = 'block';
     target.style.background = 'green';
-    isRed = false;
+
     locked = false;
 
     const waitTime = rand(2000, 5000);
 
-    currentTimer = setTimeout(() => {
+    timer = setTimeout(() => {
+
+        // 變紅
         target.style.background = 'red';
         isRed = true;
         startTime = Date.now();
+
+        // 👉 第三關 scare（紅點出現後延遲）
+        if (round === 3 && !scareTriggered) {
+            scareTriggered = true;
+
+            const delay = rand(200, 400);
+
+            setTimeout(() => {
+                triggerScare();
+            }, delay);
+        }
+
     }, waitTime);
 }
 
@@ -118,16 +135,6 @@ target.onclick = () => {
 
     if (!isRed) {
         failRound();
-        return;
-    }
-
-    if (round === 3) {
-        locked = true;
-
-        requestAnimationFrame(() => {
-            triggerScare();
-        });
-
         return;
     }
 
@@ -148,11 +155,14 @@ function failRound() {
     target.style.display = 'none';
     msg.innerText = "太早了，重新來";
 
-    currentTimer = setTimeout(() => {
+    timer = setTimeout(() => {
         nextRound();
     }, 1000);
 }
 
+/* ======================
+   scare
+====================== */
 function triggerScare() {
     clearTimer();
 
@@ -176,11 +186,14 @@ function triggerScare() {
     });
 }
 
+/* ======================
+   result system
+====================== */
 function showResult(reaction) {
     const rank = getRank(reaction);
     const leaderboard = buildLeaderboard(reaction);
 
-    let boardText = leaderboard
+    const boardText = leaderboard
         .map((p, i) => `${i+1}. ${p.name} - ${p.score}ms`)
         .join("\n");
 
@@ -216,10 +229,13 @@ function buildLeaderboard(myScore) {
         .slice(0,5);
 }
 
+/* ======================
+   utils
+====================== */
 function clearTimer() {
-    if (currentTimer) {
-        clearTimeout(currentTimer);
-        currentTimer = null;
+    if (timer) {
+        clearTimeout(timer);
+        timer = null;
     }
 }
 
